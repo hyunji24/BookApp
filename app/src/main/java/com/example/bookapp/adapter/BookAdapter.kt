@@ -9,7 +9,7 @@ import com.bumptech.glide.Glide
 import com.example.bookapp.databinding.ItemBookBinding
 import com.example.bookapp.model.Book
 
-class BookAdapter:ListAdapter<Book,BookAdapter.BookItemViewHolder>(diffUtil) {
+class BookAdapter(private val itemClickedListener:(Book)->Unit):ListAdapter<Book,BookAdapter.BookItemViewHolder>(diffUtil) {
 //어댑터: 데이터를 받아오고 이를 레이아웃에 직접 연결하는 함수를 실행시키는 클래스.
 //diffUtil: 기존 리스트와 업데이트 된 리스트의 차이 계산하고 실제로 변환할 리스트 아이템들의 결과 반환하는 클래스
 //ListAdapter<데이터클래스,리사이클러뷰 뷰홀더> 를 인자로 받는다-> 어댑터 내에서 리스트 정의하는게 아니라 리스트 자체에서 데이터리스트 정의하기 때문
@@ -26,6 +26,10 @@ class BookAdapter:ListAdapter<Book,BookAdapter.BookItemViewHolder>(diffUtil) {
         fun bind(bookModel:Book){//view와 데이터를 연결시키는 함수-/>뷰에 데이터 넣음
             binding.titleTextview.text=bookModel.title
             binding.descriptionTextView.text=bookModel.description
+
+            binding.root.setOnClickListener {
+                itemClickedListener(bookModel)
+            }
             Glide
                 .with(binding.coverImageView.context) //context가 어댑터에 없다 -> 뷰에 있겠죠?
                 .load(bookModel.coverSmallUrl)

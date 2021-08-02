@@ -1,5 +1,6 @@
 package com.example.bookapp
 
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -28,7 +29,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adapter:BookAdapter
     private lateinit var historyadapter: HistoryAdapter
     private lateinit var bookService: BookService
-
     private lateinit var db:AppDatabase
     //room 과 관련된 액션은 Thread,AsyncTask등을 이용해 백그라운드에서 작업해야함
 
@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
         binding=ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        adapter= BookAdapter()
+
         initBookRecyclerView()
         initHistoryRecyclerView()
 
@@ -90,41 +90,15 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    private fun search(keyword:String){
-        bookService.getBookbyName(getString(R.string.interparkAPIKey),keyword)
-            .enqueue(object: Callback<SearchBookDto>{
-                override fun onFailure(call: Call<SearchBookDto>, t: Throwable) {
-                    //todo 실패처리
-                    hideHistoryView()
-                    Log.d(TAG,t.toString())
-                }
 
-                override fun onResponse(call: Call<SearchBookDto>, response: Response<SearchBookDto>) {
-                    //todo 성공처리
-
-                    hideHistoryView()
-                    saveSearchKeyword(keyword) //이때 데이터를 저장하면됨
-
-                    if(response.isSuccessful.not()){
-                        return
-                    }
-                    response.body()?.let{
-                        //body가 있다면 그안에는 bestSellerDto가 들어있을것
-
-                        adapter.submitList(response.body()?.books.orEmpty()) //반환할 북 없으면 null을 빈값으로 변경
-                        //ListAdapter는 내부적으로 AsyncListDiffer를 사용하면서, RecyclerView의 adapter처럼 이용이 가능합니다.
-                        // 따라서 우리는 최종적으로 ListAdapter를 상속하는 adapter 클래스를 만들고, ListAdapter의 파라미터에 diffutil의 callback을 구현해서 넘겨주면
-                        // 내부에서 submitlist( 바뀔 데이터 ) 라는 하나의 메서드로 모든 작업을 처리 할 수 있습니다!!!!
-                    }
-
-
-                }
-
-            })
-    }
 
 
     fun initBookRecyclerView(){
+        adapter= BookAdapter(itemClickedListener={
+            val intent= Intent(this,DetailActivity::class.java)
+            intent.putExtra("bookModel",it)
+            startActivity(intent)
+        })
 
         binding.bookRecyclerView.layoutManager=LinearLayoutManager(this)
         binding.bookRecyclerView.adapter=adapter
@@ -160,9 +134,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun search(keyword:String){
+        bookService.getBookbyName(getString(R.string.interparkAPIKey),keyword)
+            .enqueue(object: Callback<SearchBookDto>{
+                override fun onFailure(call: Call<SearchBookDto>, t: Throwable) {
+                    //todo 실패처리
+                    hideHistoryView()
+                    Log.d(TAG,t.toString())
+                }
+
+                override fun onResponse(call: Call<SearchBookDto>, response: Response<SearchBookDto>) {
+                    //todo 성공처리
+
+                    hideHistoryView()
+                    saveSearchKeyword(keyword) //이때 데이터를 저장하면됨
+
+                    if(response.isSuccessful.not()){
+                        return
+                    }
+                    response.body()?.let{
+                        //body가 있다면 그안에는 bestSellerDto가 들어있을것
+
+                        adapter.submitList(response.body()?.books.orEmpty()) //반환할 북 없으면 null을 빈값으로 변경
+                        //ListAdapter는 내부적으로 AsyncListDiffer를 사용하면서, RecyclerView의 adapter처럼 이용이 가능합니다.
+                        // 따라서 우리는 최종적으로 ListAdapter를 상속하는 adapter 클래스를 만들고, ListAdapter의 파라미터에 diffutil의 callback을 구현해서 넘겨주면
+                        // 내부에서 submitlist( 바뀔 데이터 ) 라는 하나의 메서드로 모든 작업을 처리 할 수 있습니다!!!!
+                    }
+
+
+                }
+
+            })
+    }
+
     private fun showHistoryView(){
 
-        Thread{
+        Thread{ //db에 넣은거 가져온 다음 보여줘야됨
            val keywords= db.historyDao().getAll().reversed() //history의 리스트 형식,reversed통해 최신순서대로
 
             runOnUiThread{ //?todo
@@ -180,7 +187,7 @@ class MainActivity : AppCompatActivity() {
     private fun saveSearchKeyword(keyword:String){
         Thread{
             db.historyDao().insertHistory(History(null,keyword))
-        }.start()
+        }.start() //history db에 검색한 키워드 하나 저장
     }
 
     private fun deleteSearchKeyword(keyword:String){
@@ -190,6 +197,7 @@ class MainActivity : AppCompatActivity() {
 
         }.start()
     }
+
     companion object{
         private const val TAG="MainActivity"
     }
